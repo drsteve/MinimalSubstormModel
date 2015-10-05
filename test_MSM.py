@@ -22,7 +22,8 @@ class msmPropertiesTests(unittest.TestCase):
     def test_regress_FM04(self):
         '''Match F&M2004 (intersubstorm interval mean, stddev; # onsets'''
         mu0 = 4e-7*np.pi
-        acedata = spacepy.toolbox.loadpickle('BAS_ACEdata.pkl')
+        acedata = spacepy.datamodel.fromHDF5('BAS_ACEdata.h5')
+        acedata['time'] = spacepy.datamodel.dmarray([dt.datetime.strptime(z, '%Y-%m-%dT%H:%M:%S') for z in acedata['time']])
         vel = np.sqrt(acedata['vx']**2 + acedata['vy']**2 + acedata['vz']**2)*1e3
         b2 = acedata['bx']**2+acedata['by']**2+acedata['bz']**2
         btot = np.sqrt(b2)*1e-9
