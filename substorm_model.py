@@ -8,7 +8,7 @@ import datetime as dt
 import numpy as np
 import datetime as dt
 
-def msm(delta, time, pow_in, istart, iend, tau0 = 2.7*3600):
+def msm(delta, time, pow_in, istart, iend, tau0=2.7*3600, restartmode='mean', seed=None):
     """Minimal substorm model (Freeman and Morley, GRL, 2004)
     
     Inputs:
@@ -18,6 +18,11 @@ def msm(delta, time, pow_in, istart, iend, tau0 = 2.7*3600):
     pow_in - input series of solar wind power
     istart, iend - indices of start/end of contiguous blocks of input
     tau0 - recurrence constant (in seconds)
+    restartmode - mode of determining energy level at which to start integrating
+                  options are:
+                  'mean' (mean power of whole input dataset * tau)
+                  'random' (random energy content)
+                  'onset' (force onset at start/restart of model run)
     
     Returns:
     ========
@@ -31,8 +36,13 @@ def msm(delta, time, pow_in, istart, iend, tau0 = 2.7*3600):
     Port to Python by Steve Morley, Los Alamos National Lab.
     smorley@lanl.gov/morley_steve@hotmail.com
     """
-    
+    np.random.seed(seed) if seed is not None else np.random.seed(1066)
     threshold = tau0*np.mean(pow_in) # Threshold for 1st s/storm after data gap
+    rsmodes = {'mean': threshold,
+               'random': np.random.random()*threshold,
+               'onset': 0.0}
+    if restartmode not in rsmodes: raise ValueError('Invalid mode for restarting energy content selected.')
+
     f_thr, f_dump = [], []
     #f_thr = value of s.w. input at onset #f_dump = energy dumped at onset
     t, p_onset, tau = [],[],[] #time, index, interval of substorm onset
@@ -45,8 +55,7 @@ def msm(delta, time, pow_in, istart, iend, tau0 = 2.7*3600):
         en_ind = iend[j]
         
         # Initialise start of substorm sequence after data gap
-        csum.append(-1*threshold)
-        #sum[i0] = 0.0 #sum[i0] = -RandomU(seed)*threshold
+        csum.append(-1*rsmodes[restartmode])
         first_after_gap = True
         
         # Find substorms in interval
