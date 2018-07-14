@@ -2,9 +2,7 @@
 # -*- coding: utf-8 -*-
 '''Minimal substorm model port to Python'''
 from __future__ import division
-import numpy as np
-import datetime as dt
-
+import numbers
 import numpy as np
 import datetime as dt
 
@@ -48,6 +46,13 @@ def msm(delta, time, pow_in, istart, iend, tau0=2.7*3600, restartmode='mean', se
     t, p_onset, tau = [],[],[] #time, index, interval of substorm onset
     valid_mask, csum = [], [] # cumulative sum of solar wind input
     n_onset = 0
+
+    if isinstance(delta, dt.timedelta):
+        numericDelta = delta.total_seconds()
+    elif isinstance(delta, numbers.Number):
+        numericDelta = delta
+    else: #what is this?
+        raise ValueError('Invalid input delta - datatype not supported')
     
     # Find substorms in each interval of contiguous solar wind data
     for j, st_ind in enumerate(istart):
@@ -61,7 +66,7 @@ def msm(delta, time, pow_in, istart, iend, tau0=2.7*3600, restartmode='mean', se
         # Find substorms in interval
         for i in range(st_ind+1, en_ind+1):
             # Increment cumulative sum of energy input
-            csum.append(csum[-1] + (pow_in[i] + pow_in[i-1])/2*delta)
+            csum.append(csum[-1] + (pow_in[i] + pow_in[i-1])/2*numericDelta)
             # Check whether substorm threshold is reached
             if (csum[-1] >= 0): # Substorm occurs
                 # Record time of onset
@@ -130,6 +135,11 @@ def findContiguousData(x, delta, minLength=None):
             assert isinstance(delta, dt.timedelta)
         except:
             return 'findContiguousData: inconsistent data types for time objects'
+    else:
+        #assume serial time input. If delta/minLength are timedelta, convert assuming serial time in seconds
+        if isinstance(delta, dt.timedelta): delta = delta.total_seconds()
+        if isinstance(minLength, dt.timedelta): minLength = minLength.total_seconds()
+        
 
     #Calculate distance between neighbouring data points in array x
     dx = x[1:]-x[0:-1]

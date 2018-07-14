@@ -14,29 +14,26 @@ splot.style('spacepy')
 
 mu0 = 4e-7*np.pi
 
-satname = 'WIND' #'ACE'
+satname = 'ACE' #'WIND' #'ACE'
 if satname=='ACE':
-    acedata = spacepy.datamodel.fromHDF5('BAS_ACEdata.h5')
-    acedata['time'] = spacepy.datamodel.dmarray([dt.datetime.strptime(z, '%Y-%m-%dT%H:%M:%S') for z in acedata['time']])
-    vel = np.sqrt(acedata['vx']**2 + acedata['vy']**2 + acedata['vz']**2)*1e3
-    b2 = acedata['bx']**2+acedata['by']**2+acedata['bz']**2
+    data = spacepy.datamodel.fromHDF5('BAS_ACEdata.h5')
+    data['time'] = spacepy.datamodel.dmarray([dt.datetime.strptime(z, '%Y-%m-%dT%H:%M:%S') for z in data['time']])
+    vel = np.sqrt(data['vx']**2 + data['vy']**2 + data['vz']**2)*1e3
+    b2 = data['bx']**2+data['by']**2+data['bz']**2
     btot = np.sqrt(b2)*1e-9
-    theta = np.arctan2(acedata['by'],acedata['bz'])
+    theta = np.arctan2(data['by'],data['bz'])
     pow_in = np.sin(theta/2.)**4 * vel * btot**2
+    delta = dt.timedelta(seconds=60)
+    minlen = dt.timedelta(hours=100)
 elif satname=='WIND':
     data = spacepy.datamodel.fromHDF5('Wind_NAL.h5')
     pow_in = data['input']
-
-#delta = dt.timedelta(0,60)
-#numericDelta = delta.days*86400+delta.seconds
-#minlen = dt.timedelta(hours=100)
-delta = 60
-numericDelta = 60
-minlen = 60*60*100
+    delta = 60
+    minlen = 60*60*100
 
 istart, iend = msm.findContiguousData(data['time'], delta, 
     minLength=minlen)
-results = msm.msm(numericDelta, data['time'], pow_in, istart, 
+results = msm.msm(delta, data['time'], pow_in, istart, 
     iend, tau0=2.69*3600, restartmode='random') #ACE is 2.75; Wind is 2.69
 
 # plot histogram of inter-substorm intervals
@@ -54,7 +51,7 @@ def convert_tdelt(inputlist, units='hours'):
             outputlist = inputlist/fac
         except TypeError: #not an array
             outputlist = [el/fac for el in inputlist]
-    return outputlist
+    return np.asarray(outputlist)
 
 isi = convert_tdelt(results['tau_valid'], units='minutes')
 isi_hr = convert_tdelt(results['tau_valid'], units='hours')
