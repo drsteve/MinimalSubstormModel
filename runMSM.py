@@ -2,39 +2,45 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import division
-
-import spacepy, matplotlib
-from spacepy.toolbox import binHisto
-import numpy as np
 import datetime as dt
-import substorm_model as msm
+
+import numpy as np
 import matplotlib.pyplot as plt
+import spacepy
+from spacepy.toolbox import binHisto
 import spacepy.plot as splot
+import substorm_model as msm
 splot.style('spacepy')
 
-mu0 = 4e-7*np.pi
+sdict = dict()
+sdict['ACE'] = {'delta': dt.timedelta(seconds=60),
+                'minlen': dt.timedelta(hours=100),
+                'tau0': 2.75*3600,
+                }
+sdict['WIND'] = {'delta': 60,
+                 'minlen': 60*60*100,
+                 'tau0': 2.69*3600,
+                 }
 
-satname = 'ACE' #'WIND' #'ACE'
+numericDelta = 60
+
+satname = 'ACE'#'WIND' #'ACE'
 if satname=='ACE':
     data = spacepy.datamodel.fromHDF5('BAS_ACEdata.h5')
-    data['time'] = spacepy.datamodel.dmarray([dt.datetime.strptime(z, '%Y-%m-%dT%H:%M:%S') for z in data['time']])
+    data['time'] = spacepy.datamodel.dmarray([dt.datetime.strptime(z.decode('UTF-8'), '%Y-%m-%dT%H:%M:%S') for z in data['time']])
     vel = np.sqrt(data['vx']**2 + data['vy']**2 + data['vz']**2)*1e3
-    b2 = data['bx']**2+data['by']**2+data['bz']**2
+    b2 = data['bx']**2 + data['by']**2 + data['bz']**2
     btot = np.sqrt(b2)*1e-9
-    theta = np.arctan2(data['by'],data['bz'])
+    theta = np.arctan2(data['by'], data['bz'])
     pow_in = np.sin(theta/2.)**4 * vel * btot**2
-    delta = dt.timedelta(seconds=60)
-    minlen = dt.timedelta(hours=100)
 elif satname=='WIND':
     data = spacepy.datamodel.fromHDF5('Wind_NAL.h5')
     pow_in = data['input']
-    delta = 60
-    minlen = 60*60*100
 
-istart, iend = msm.findContiguousData(data['time'], delta, 
-    minLength=minlen)
-results = msm.msm(delta, data['time'], pow_in, istart, 
-    iend, tau0=2.69*3600, restartmode='random') #ACE is 2.75; Wind is 2.69
+istart, iend = msm.findContiguousData(data['time'], sdict[satname]['delta'], 
+    minLength=sdict[satname]['minlen'])
+results = msm.msm(numericDelta, data['time'], pow_in, istart, 
+    iend, tau0=sdict[satname]['tau0'], restartmode='random') #ACE is 2.75; Wind is 2.69
 
 # plot histogram of inter-substorm intervals
 def convert_tdelt(inputlist, units='hours'):
@@ -70,7 +76,7 @@ except ImportError:
     kde_plot = kernel.evaluate(tau_ax)
 
 fig, ax = splot.set_target(None)
-ax.hist(isi_hr, bins=np.arange(0,25,0.5), histtype='step', normed=True, lw=1.5, label='Binned Data')
+ax.hist(isi_hr, bins=np.arange(0,25,0.5), histtype='step', density=True, lw=1.5, label='Binned Data')
 ax.plot(tau_ax/60., kde_plot*60., lw=1.5, label=kern_lab)
 ax.set_xlim([0,25])
 ax.set_ylabel('Probability')

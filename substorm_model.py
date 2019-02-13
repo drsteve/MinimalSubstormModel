@@ -32,7 +32,7 @@ def msm(delta, time, pow_in, istart, iend, tau0=2.7*3600, restartmode='mean', se
     =======
     Original -- Mervyn Freeman, British Antarctic Survey
     Port to Python by Steve Morley, Los Alamos National Lab.
-    smorley@lanl.gov/morley_steve@hotmail.com
+    smorley@lanl.gov
     """
     np.random.seed(seed) if seed is not None else np.random.seed(1066)
     threshold = tau0*np.mean(pow_in) # Threshold for 1st s/storm after data gap
