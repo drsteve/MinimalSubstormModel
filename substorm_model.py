@@ -6,7 +6,8 @@ import numbers
 import numpy as np
 import datetime as dt
 
-def msm(delta, time, pow_in, istart, iend, tau0=2.7*3600, restartmode='mean', seed=None):
+def msm(delta, time, pow_in, istart, iend, tau0=2.7*3600, restartmode='mean',
+        extendedout=False, seed=None):
     """Minimal substorm model (Freeman and Morley, GRL, 2004)
     
     Inputs:
@@ -21,6 +22,7 @@ def msm(delta, time, pow_in, istart, iend, tau0=2.7*3600, restartmode='mean', se
                   'mean' (mean power of whole input dataset * tau)
                   'random' (random energy content)
                   'onset' (force onset at start/restart of model run)
+    extendedout - if True, add energy content as function of time to output
     
     Returns:
     ========
@@ -41,9 +43,13 @@ def msm(delta, time, pow_in, istart, iend, tau0=2.7*3600, restartmode='mean', se
                'onset': 0.0}
     if restartmode not in rsmodes: raise ValueError('Invalid mode for restarting energy content selected.')
 
-    f_thr, f_dump = [], []
+    if extendedout: time_used = []
+    f_thr = []
+    f_dump = []
     #f_thr = value of s.w. input at onset #f_dump = energy dumped at onset
-    t, p_onset, tau = [],[],[] #time, index, interval of substorm onset
+    t = [] #time of substorm onsets
+    p_onset = [] #index of substorm onsets
+    tau = [] #interval of substorm onsets
     valid_mask, csum = [], [] # cumulative sum of solar wind input
     n_onset = 0
 
@@ -67,6 +73,8 @@ def msm(delta, time, pow_in, istart, iend, tau0=2.7*3600, restartmode='mean', se
         for i in range(st_ind+1, en_ind+1):
             # Increment cumulative sum of energy input
             csum.append(csum[-1] + (pow_in[i] + pow_in[i-1])/2*numericDelta)
+            if extendedout:
+                time_used.append(time[i])
             # Check whether substorm threshold is reached
             if (csum[-1] >= 0): # Substorm occurs
                 # Record time of onset
@@ -92,8 +100,12 @@ def msm(delta, time, pow_in, istart, iend, tau0=2.7*3600, restartmode='mean', se
     p_valid = np.ma.array(p_onset, mask=valid_mask).compressed()
     t_valid = np.ma.array(t, mask=valid_mask).compressed()
 
-    out_dict = {'p_onset': p_onset, 't': t, 'tau': tau, 'f_dump': f_dump, 'f_thr': f_thr, 
-        'n_valid': len(tau_valid), 'n': len(t), 't_valid': t_valid, 'tau_valid': tau_valid}
+    out_dict = {'p_onset': p_onset, 't': t, 'tau': tau, 'f_dump': f_dump,
+                'f_thr': f_thr, 'n_valid': len(tau_valid), 'n': len(t),
+                't_valid': t_valid, 'tau_valid': tau_valid}
+    if extendedout:
+        out_dict['energy'] = csum
+        outdict['time'] = time_used
 
     return out_dict
 
