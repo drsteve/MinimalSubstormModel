@@ -105,7 +105,7 @@ def msm(delta, time, pow_in, istart, iend, tau0=2.7*3600, restartmode='mean',
                 't_valid': t_valid, 'tau_valid': tau_valid}
     if extendedout:
         out_dict['energy'] = csum
-        outdict['time'] = time_used
+        out_dict['time'] = time_used
 
     return out_dict
 
