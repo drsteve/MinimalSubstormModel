@@ -6,11 +6,13 @@ try:
     import unittest_pretty as utp
 except:
     pass
-import unittest
-import spacepy, matplotlib
-from spacepy.toolbox import binHisto
-import numpy as np
 import datetime as dt
+import unittest
+import numpy as np
+import matplotlib
+import spacepy.datamodel as dm
+import spacepy.time as spt
+from spacepy.toolbox import binHisto
 import substorm_model as msm
 
 def tdelt2hrs(inputlist):
@@ -22,13 +24,9 @@ class msmPropertiesTests(unittest.TestCase):
     def test_regress_FM04(self):
         '''Match F&M2004 (intersubstorm interval mean, stddev; # onsets'''
         mu0 = 4e-7*np.pi
-        acedata = spacepy.datamodel.fromHDF5('BAS_ACEdata.h5')
-        acedata['time'] = spacepy.datamodel.dmarray([dt.datetime.strptime(z.decode('UTF-8'), '%Y-%m-%dT%H:%M:%S') for z in acedata['time']])
-        vel = np.sqrt(acedata['vx']**2 + acedata['vy']**2 + acedata['vz']**2)*1e3
-        b2 = acedata['bx']**2+acedata['by']**2+acedata['bz']**2
-        btot = np.sqrt(b2)*1e-9
-        theta = np.arctan2(acedata['by'],acedata['bz'])
-        pow_in = np.sin(theta/2.)**4 * vel * btot**2
+        acedata = dm.fromHDF5('BAS_ACEdata.h5')
+        acedata['time'] = spt.Ticktock(acedata['time']).UTC
+        pow_in = msm.calc_epsilon(acedata)
 
         delta = dt.timedelta(0,60)
 

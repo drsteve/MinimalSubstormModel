@@ -3,6 +3,7 @@
 '''Minimal substorm model port to Python'''
 from __future__ import division
 import numbers
+from re import I
 import numpy as np
 import datetime as dt
 
@@ -193,3 +194,75 @@ def findContiguousData(x, delta, minLength=None):
     iend = [iend_c[ind] for ind in ilong]
 
     return istart, iend
+
+
+def amplify_limit(imf_magn, ampfac=7, limit=60):
+    """amplification-limitation procedure
+    
+    Amplification factor defaults to 7 following Reiff et al.
+    Limit is set to 60nT.
+    See Morley, Freeman & Tanskanen (2007) for details.
+    """
+    imf = np.atleast_1d(imf_magn)
+    cap = np.ones_like(imf)*limit/ampfac
+    test = np.c_[imf, cap]
+    b_amplim = np.min(test, axis=-1)
+    return b_amplim
+
+
+def calc_epsilon(data, amplim=False, amplim_params={}):
+    """Calculate Akasofu's epsilon from input SW/IMF data
+
+    Assumes dict-like with vx, vy, vz, bx, by, bz
+    v must be km/s
+    b must be nT
+    """
+    # magnitude of v in m/s
+    vel = np.sqrt(data['vx']**2 + data['vy']**2 + data['vz']**2)*1e3
+    # btotal in T
+    b2 = data['bx']**2 + data['by']**2 + data['bz']**2
+    btot = np.sqrt(b2)
+    # clock angle
+    theta = np.arctan2(data['by'], data['bz'])
+    # check for amp-lim
+    if amplim:
+        if not amplim_params:
+            amplim_params = dict(limit=60, ampfac=7)
+        btot = amplify_limit(btot, **amplim_params)
+    epsilon = np.sin(theta/2.)**4 * vel * (1e-9*btot)**2
+    return epsilon*1e6
+
+
+def transpolar_voltage(power_in):
+    """Calculate transpolar voltage
+    """
+    term1 = 20*(np.pi*1e6*power_in)**(1/3)
+    term2 = 1.4*np.pi*1e6*power_in
+    cpcp = term1+term2
+    return cpcp
+
+
+def synth_DP2(power_in):
+    """Synthetic AU index, driven by solar wind input only"""
+    a_tv = 2.07  # see section 3.3 of Morley, Freeman & Tanskanen 2007
+    dp2 = -a_tv*transpolar_voltage(power_in)
+    return dp2
+
+
+def synth_DP1(power_in):
+    pass
+
+
+def synthAL(power_in, energy_out):
+    """Synthetic AL index, driven by solar wind and MSM energy output"""
+    return dp2(power_in) + dp1(power_in, energy_out)
+
+
+def synthAU(power_in):
+    """Synthetic AU index. Invert sign on directly-driven (DP2) component of synthetic AL"""
+    return -1*dp2(power_in)
+
+
+def syntheticAE(power_in, energy_out):
+    """Synthetic Auroral Electrojet (AE) indices described in Morley et al., 2007"""
+    return synthAU(power_in) - synthAL(power_in, energy_out)
